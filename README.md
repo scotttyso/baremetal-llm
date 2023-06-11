@@ -5,6 +5,12 @@
 06-11-2023
 * Initial Release
 
+### Generate Hash Password
+
+```bash
+mkpasswd --method=SHA-512 --rounds=4096
+```
+
 ### Extend Boot Drive Storage 
 
 * Check to see if drives from storage profile are recognized: 
