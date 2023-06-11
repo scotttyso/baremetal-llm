@@ -1,257 +1,257 @@
-# IMM Toolkit Setup Instructions
+# Cisco UCS Baremetal Deployment for Ubuntu 22.0.4 Large Language Model
 
 ## Updates/News
 
-05-04-2023
+06-11-2023
 * Initial Release
 
-## Setup NGINX
+### Extend Boot Drive Storage 
 
-Install NGINX and NetTools
-
-```bash
-sudo apt install net-tools
-```
+* Check to see if drives from storage profile are recognized: 
 
 ```bash
-sudo apt install nginx
+sudo dmesg | grep sd 
+df -h 
 ```
 
-Configure Security Settings for nginx.
+* Use lvextend to extend the size of the logical volume, to fill up the remaining space: 
 
 ```bash
-sudo vim /etc/nginx/nginx.conf
+sudo lvextend --extents +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv 
 ```
 
-* Copy the contents of the nginx.conf file
-
-Generate the Certificate and Private Key
+* Resize the filesystem in that logical volume 
 
 ```bash
-cd /etc/nginx
-sudo mkdir ssl
-cd ssl
-sudo openssl req -new -newkey rsa:2048 -days 1095 -nodes -x509 -keyout nginx.key -out nginx.crt
+sudo resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv 
 ```
+
+* Check end result: 
+
+```bash
+df -h 
+```
+
+### Perform System Update 
+
+Update the system using the following commands: 
+
+```bash
+apt list --installed 
+sudo apt update 
+apt list --upgradable 
+sudo apt upgrade 
+```
+
+### Checking NVIDIA GPU 
+
+* Check what kernel modules are currently loaded: 
+
+```bash
+lsmod  
+```
+
+* See what devices are connected to the PCI bus in the server 
+
+```bash
+lspci | more 
+lspci | grep VGA 
+lspci | grep NVIDIA  
+```
+
+* Confirm what driver is appropriate for your GPU. No need to download it. 
+
+https://www.nvidia.com/Download/index.aspx?lang=en
+
+### Installing CUDA and NVIDIA Drivers 
+
+* Use the Instructions at the URL below to Install the Appropriate Drivers
+
+https://developer.nvidia.com/cuda-12-1-0-download-archive
+
+* Update .bashrc with Path for CUDA Version and load it
+
+```bash
+echo 'export PATH="/usr/local/cuda-12.1/bin:$PATH"' >> .bashrc
+echo 'export LD_LIBRARY_PATH="/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH"' >> .bashrc
+source .bashrc  
+```
+
+### Reboot the host to activate CUDA Driver
+
+```bash
+sudo reboot 
+```
+
+### Verify version of the NVIDIA CUDA Compiler Driver 
+
+```bash
+nvcc --version
+```
+
+* Test the NVIDIA System Management Interface 
+
+```bash
+nvidia-smi
+```
+
+## Installing Ai-Monitor Tool
+
+```bash
+git clone https://github.com/pl247/ai-monitor
+```
+
+Installing Miniconda  
+
+(https://learnubuntu.com/install-conda/) 
+
+ 
+
+cd /mnt/data 
+
+sudo wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh 
+
+sudo chmod -v +x Miniconda3-py39_4.12.0-Linux-x86_64.sh 
+
+sudo ./Miniconda3-py39_4.12.0-Linux-x86_64.sh 
+
+ 
+
+ 
+
+ 
+ 
+
+ 
+
+## Installing Text Generation UI 
+
+### Create New Conda Environment 
+
+```bash
+conda create -n textgen python=3.10.9 
+conda activate textgen 
+```
+
+* Install pytorch 
+
+```bash
+pip3 install torch torchvision torchaudio
+```
+
+ 
+
+## Install web UI 
+
+```bash
+git clone https://github.com/oobabooga/text-generation-webui
+cd text-generation-webui 
+pip install -r requirements.txt 
+```
+
+### Running the Web UI 
+
+```bash
+conda activate textgen 
+cd text-generation-webui 
+python server.py --listen --auto-devices --chat --model-menu --gpu-memory 35 
+```
+ 
+
+* CPU only 
+
+```bash
+python server.py --listen --cpu --chat --model-menu 
+```
+
+* With bfloat16 not sure if it is faster or not but requires Ampere GPU 
+
+```bash
+python server.py --listen --auto-devices --chat --model-menu --gpu-memory 14 --bf16
+```
+
+* CPU only = ~4 tokens/s 
+* GPU = ~7 tokens/s 
+
+Flags: 
+--cpu (CPU only) 
+--auto-devices (split across CPU and GPU) 
+--gpu-memory 
+--public-api 
+
+## As a second try it with 4 gpu 
+
+* notice how memory is split across 4 GPU and on model page it is configured  
+
+```bash
+python server.py --listen --auto-devices --chat --model-menu 
+```
+ 
+
+Then browse to 
+http://10.0.40.61:7860/?__theme=dark 
+
+ 
+## Downloading Additional Models from Hugging Face 
+
+From the webui directory run the download model script 
+
+```bash
+cd ~/text-generation-webui 
+```
+
+* Unquantized version of the Vicuna-7B 1.1 model HF format 
+
+```bash
+python download-model.py TheBloke/vicuna-7B-1.1-HF  
+```
+
+ 
+
+# Unquantized version of the Vicuna-13B 1.1 model HF format 
+
+```bash
+python download-model.py TheBloke/vicuna-13B-1.1-HF 
+```
+
+## Using the API 
 
 
 ```bash
-sudo chown www-data:www-data nginx.key
-sudo chown www-data:www-data nginx.crt
-sudo chmod 400 nginx.crt
-sudo chmod 400 nginx.key
-```
+import requests 
 
-Setup default site for File Services over HTTPS
+def run(prompt: str) -> str: 
+    request = { 
+        'prompt': prompt, 
+        'max_new_tokens': 200, 
+        'do_sample': True, 
+        'temperature': 0.7, 
+        'top_p': 0.5, 
+        'typical_p': 1, 
+        'repetition_penalty': 1.2, 
+        'top_k': 40, 
+        'min_length': 0, 
+        'no_repeat_ngram_size': 0, 
+        'num_beams': 1, 
+        'penalty_alpha': 0, 
+        'length_penalty': 1, 
+        'early_stopping': False, 
+        'seed': -1, 
+        'add_bos_token': True, 
+        'truncation_length': 2048, 
+        'ban_eos_token': False, 
+        'skip_special_tokens': True, 
+        'stopping_strings': [] 
+    } 
 
-```bash
-cd /var/www/
-sudo mkdir upload
-cd upload/
-sudo touch test.txt
-cd /etc/nginx/sites-enabled
-sudo vim default
-```
+    response = requests.post(f'http://127.0.0.1:5000/api/v1/generate', json=request) 
 
-* Copy the contents of nginx-sites-default into the above file
+    if response.status_code == 200: 
+        return response.json()['results'][0]['text'] 
 
-```bash
-sudo systemctl restart nginx
-sudo systemctl status nginx.service
-netstat -tulpn
-```
+    return "" 
 
-## Setup NTP
-
-* Install NTP
-
-```bash
-sudo apt install ntp
-```
-
-## Setup  OVF Customization Script
-
-```bash
-sudo vim /usr/local/bin/ovf_network_config.sh
-```
-
-* Copy the contents of ovf_network_config.sh
-
-```bash
-sudo vim /etc/systemd/system/ovf-network-config.service
-```
-
-* Copy the contents of ovf-network-config.service
-
-* Change the Permissions on the Files
-
-```bash
-sudo chmod 744 /usr/local/bin/ovf_network_config.sh
-sudo chmod 664 /etc/systemd/system/ovf-network-config.service
-sudo systemctl daemon-reload
-sudo systemctl enable ovf-network-config.service
-```
-
-## Install Python and Modules
-
-```bash
-sudo apt install python3-pip
-```
-
-```bash
-cd ~
-mkdir Downloads
-chown imm-toolkit:imm-toolkit Downloads
-mkdir Logs
-chwon imm-toolkit:imm-toolkit Logs
-mkdir github
-chown imm-toolkit:imm-toolkit github
-cd github/
-git clone https://github.com/scotttyso/intersight_iac
-```
-
-```bash
-sudo ln -s /home/imm-toolkit/github/intersight_iac/ezimm.py /usr/bin/ezimm.py
-sudo ln -s /home/imm-toolkit/github/intersight_iac/ezci.py /usr/bin/ezci.py
-sudo ln -s /home/imm-toolkit/github/intersight_iac/ezvcenter.ps1 /usr/bin/ezvcenter.ps1
-cd intersight_iac/
-sudo pip install -r requirements.txt
-```
-
-```bash
-cd ~
-sudo pip install intersight
-```
-
-## Install Ansible and Galaxy Modules
-
-```bash
-sudo apt install ansible -y
-```
-
-```bash
-ansible-galaxy collection install cisco.intersight
-```
-
-## Install PowerShell and Modules
-
-```bash
-sudo snap install powershell
-```
-
-```bash
-pwsh -Command Install-Module -Name Intersight.PowerShell -Force
-```
-
-```bash
-pwsh -Command Install-Module -Name VMware.PowerCLI -Force
-```
-
-
-## Install Terraform
-
-```bash
-sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
-wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | \
-sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
-https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
-sudo tee /etc/apt/sources.list.d/hashicorp.list
-```
-
-```bash
-sudo apt update
-```
-
-```bash
-sudo apt-get install terraform
-```
-
-```bash
-terraform -install-autocomplete
-```
-
-## Install isdk
-
-```bash
-LOCATION=$(curl -s https://api.github.com/repos/cgascoig/isctl/releases/latest \
-| grep "tag_name" \
-| awk '{print "https://github.com/cgascoig/isctl/releases/download/" substr($2, 2, length($2)-3) \
-"/isctl_" substr($2, 2, length($2)-3) "_Linux_x86_64.tar.gz"}' \
-| sed 's/isctl_v/isctl_/'); curl -L -o isctl.tar.gz $LOCATION
-```
-
-```bash
-tar -xvf isctl.tar.gz
-rm isctl.tar.gz
-sudo mv isctl /usr/local/bin/
-sudo chmod +x /usr/local/bin/isctl
-```
-
-## Setup OVF Customization on VM
-
-![alt text](vApp-Options.png "vApp Options")
-
-![alt text](vApp-Properties.png "vApp Properties")
-
-- IP Source
-  - Category: Networking
-  - Description:
-  - Key ID: guestinfo.ip_source
-  - Label: IP Source
-  - Type: string choice
-  - Choice List: "DHCP", "STATIC"
-  - Default value: STATIC
-- Hostname
-  - Category: Networking
-  - Description: The Fully Qualified Domain Name
-  - Key ID: guestinfo.hostname
-  - Label: Hostname
-  - Type: string
-- IP Address
-  - Category: Networking
-  - Description:
-  - Key ID: guestinfo.ipaddress
-  - Label: IP Address
-  - Type: string
-  - Length: 7 to 15
-- Network Prefix
-  - Category: Networking
-  - Description:
-  - Key ID: guestinfo.prefix
-  - Label: Network Prefix
-  - Type: integer
-  - range: 1 to 30
-  - Default value: 24
-- Gateway
-  - Category: Networking
-  - Description:
-  - Key ID: guestinfo.gateway
-  - Label: Gateway
-  - Type: string
-  - Length: 7 to 15
-- DNS Servers
-  - Category: Networking
-  - Description: Use a comma to separate multiple servers.  i.e. 8.8.4.4,8.8.8.8
-  - Key ID: guestinfo.dns
-  - Label: DNS Servers
-  - Type: string
-- DNS Domains
-  - Category: Networking
-  - Description: Use a comma to separate multiple domains.  i.e. cisco.com,example.com
-  - Key ID: guestinfo.domain
-  - Label: DNS Domains
-  - Type: string
-- NTP Servers
-  - Category: Networking
-  - Description: Use a comma to separate multiple servers.  i.e. 0.pool.ntp.org,1.pool.ntp.org
-  - Key ID: guestinfo.ntp
-  - Label: NTP Servers
-  - Type: string
-
-## Create OVA From VM or VM Template
-
-```powershell
-cd %ProgramFiles%\VMware\VMware OVF Tool
-ovftool.exe vi://<vcenter-url>/<datacenter>/vm/<vm-folder> %HOMEPATH%\Downloads\imm-toolkitv0.1.ova
+prompt = "hey, whats 1+1?" 
+response = run(prompt) 
+print(response) # the expected result via ui is '2'. But the result via api is ' \n släktet'. 
 ```
