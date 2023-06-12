@@ -67,7 +67,7 @@ lspci | grep NVIDIA
 
 * Confirm what driver is appropriate for your GPU. No need to download it.
 
-[*Install NVIDIA CUDA*](https://www.nvidia.com/Download/index.aspx?lang=en)
+[*NVIDIA GPU Driver Version*](https://www.nvidia.com/Download/index.aspx?lang=en)
 
 ### Installing CUDA and NVIDIA Drivers
 
