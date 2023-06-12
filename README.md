@@ -13,89 +13,89 @@ mkpasswd --method=SHA-512 --rounds=4096
 
 ### Extend Boot Drive Storage 
 
-* Check to see if drives from storage profile are recognized: 
+* Check to see if drives from storage profile are recognized:
 
 ```bash
-sudo dmesg | grep sd 
-df -h 
+sudo dmesg | grep sd
+df -h
 ```
 
-* Use lvextend to extend the size of the logical volume, to fill up the remaining space: 
+* Use lvextend to extend the size of the logical volume, to fill up the remaining space:
 
 ```bash
-sudo lvextend --extents +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv 
+sudo lvextend --extents +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
 ```
 
-* Resize the filesystem in that logical volume 
+* Resize the filesystem in that logical volume
 
 ```bash
-sudo resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv 
+sudo resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv
 ```
 
-* Check end result: 
+* Check end result:
 
 ```bash
-df -h 
+df -h
 ```
 
-### Perform System Update 
+### Perform System Update
 
-Update the system using the following commands: 
+Update the system using the following commands:
 
 ```bash
-apt list --installed 
-sudo apt update 
-apt list --upgradable 
-sudo apt upgrade 
+apt list --installed
+sudo apt update
+apt list --upgradable
+sudo apt -y upgrade
 ```
 
 ### Checking NVIDIA GPU 
 
-* Check what kernel modules are currently loaded: 
+* Check what kernel modules are currently loaded:
 
 ```bash
-lsmod  
+lsmod
 ```
 
-* See what devices are connected to the PCI bus in the server 
+* See what devices are connected to the PCI bus in the server.
 
 ```bash
-lspci | more 
-lspci | grep VGA 
-lspci | grep NVIDIA  
+lspci | more
+lspci | grep VGA
+lspci | grep NVIDIA
 ```
 
-* Confirm what driver is appropriate for your GPU. No need to download it. 
+* Confirm what driver is appropriate for your GPU. No need to download it.
 
-https://www.nvidia.com/Download/index.aspx?lang=en
+[*Install NVIDIA CUDA*](https://www.nvidia.com/Download/index.aspx?lang=en)
 
-### Installing CUDA and NVIDIA Drivers 
+### Installing CUDA and NVIDIA Drivers
 
-* Use the Instructions at the URL below to Install the Appropriate Drivers
+* Use the Instructions at the URL below to Install the Appropriate Drivers.
 
-https://developer.nvidia.com/cuda-12-1-0-download-archive
+[*Install NVIDIA CUDA*](https://developer.nvidia.com/cuda-downloads)
 
-* Update .bashrc with Path for CUDA Version and load it
+* Update .bashrc with Path for CUDA Version and load it.
 
 ```bash
-echo 'export PATH="/usr/local/cuda-12.1/bin:$PATH"' >> .bashrc
-echo 'export LD_LIBRARY_PATH="/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH"' >> .bashrc
+echo 'export PATH="/usr/local/cuda-<cuda-version>/bin:$PATH"' >> .bashrc
+echo 'export LD_LIBRARY_PATH="/usr/local/cuda-<cuda-version>/lib64:$LD_LIBRARY_PATH"' >> .bashrc
 source .bashrc  
 ```
 
 ### Reboot the host to activate CUDA Driver
 
 ```bash
-sudo reboot 
+sudo reboot
 ```
 
-### Verify version of the NVIDIA CUDA Compiler Driver 
+### Verify version of the NVIDIA CUDA Compiler Driver
 
 ```bash
 nvcc --version
 ```
 
-* Test the NVIDIA System Management Interface 
+* Test the NVIDIA System Management Interface.
 
 ```bash
 nvidia-smi
@@ -109,34 +109,23 @@ git clone https://github.com/pl247/ai-monitor
 
 Installing Miniconda  
 
-(https://learnubuntu.com/install-conda/) 
+[*Install Conda*](https://learnubuntu.com/install-conda/) 
 
  
-
-cd /mnt/data 
-
-sudo wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh 
-
-sudo chmod -v +x Miniconda3-py39_4.12.0-Linux-x86_64.sh 
-
-sudo ./Miniconda3-py39_4.12.0-Linux-x86_64.sh 
-
- 
-
- 
-
- 
- 
-
- 
+```bash
+cd /mnt/data
+sudo wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
+sudo chmod -v +x Miniconda3-py39_4.12.0-Linux-x86_64.sh
+sudo ./Miniconda3-py39_4.12.0-Linux-x86_64.sh
+```
 
 ## Installing Text Generation UI 
 
 ### Create New Conda Environment 
 
 ```bash
-conda create -n textgen python=3.10.9 
-conda activate textgen 
+conda create -n textgen python=3.10.9
+conda activate textgen
 ```
 
 * Install pytorch 
@@ -147,69 +136,68 @@ pip3 install torch torchvision torchaudio
 
  
 
-## Install web UI 
+## Install web UI
 
 ```bash
 git clone https://github.com/oobabooga/text-generation-webui
-cd text-generation-webui 
-pip install -r requirements.txt 
+cd text-generation-webui
+pip install -r requirements.txt
 ```
 
-### Running the Web UI 
+### Running the Web UI
 
 ```bash
-conda activate textgen 
-cd text-generation-webui 
-python server.py --listen --auto-devices --chat --model-menu --gpu-memory 35 
+conda activate textgen
+cd text-generation-webui
+python server.py --listen --auto-devices --chat --model-menu --gpu-memory 35
 ```
  
 
-* CPU only 
+* CPU only
 
 ```bash
-python server.py --listen --cpu --chat --model-menu 
+python server.py --listen --cpu --chat --model-menu
 ```
 
-* With bfloat16 not sure if it is faster or not but requires Ampere GPU 
+* With bfloat16 not sure if it is faster or not but requires Ampere GPU
 
 ```bash
 python server.py --listen --auto-devices --chat --model-menu --gpu-memory 14 --bf16
 ```
 
-* CPU only = ~4 tokens/s 
-* GPU = ~7 tokens/s 
+* CPU only = ~4 tokens/s
+* GPU = ~7 tokens/s
 
 Flags: 
---cpu (CPU only) 
---auto-devices (split across CPU and GPU) 
---gpu-memory 
---public-api 
+--cpu (CPU only)
+--auto-devices (split across CPU and GPU)
+--gpu-memory
+--public-api
 
-## As a second try it with 4 gpu 
+## As a second try it with 4 gpu
 
-* notice how memory is split across 4 GPU and on model page it is configured  
+* notice how memory is split across 4 GPU and on model page it is configured
 
 ```bash
-python server.py --listen --auto-devices --chat --model-menu 
+python server.py --listen --auto-devices --chat --model-menu
 ```
  
 
-Then browse to 
-http://10.0.40.61:7860/?__theme=dark 
+Then browse to http://<your-server>:7860/?__theme=dark
 
  
 ## Downloading Additional Models from Hugging Face 
 
-From the webui directory run the download model script 
+From the webui directory run the download model script
 
 ```bash
-cd ~/text-generation-webui 
+cd ~/text-generation-webui
 ```
 
-* Unquantized version of the Vicuna-7B 1.1 model HF format 
+* Unquantized version of the Vicuna-7B 1.1 model HF format
 
 ```bash
-python download-model.py TheBloke/vicuna-7B-1.1-HF  
+python download-model.py TheBloke/vicuna-7B-1.1-HF
 ```
 
  
@@ -223,7 +211,7 @@ python download-model.py TheBloke/vicuna-13B-1.1-HF
 ## Using the API 
 
 
-```bash
+```python
 import requests 
 
 def run(prompt: str) -> str: 
