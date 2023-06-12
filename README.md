@@ -107,10 +107,7 @@ nvidia-smi
 git clone https://github.com/pl247/ai-monitor
 ```
 
-Installing Miniconda  
-
-[*Install Conda*](https://learnubuntu.com/install-conda/) 
-
+Installing Miniconda  - [*Install Conda*](https://learnubuntu.com/install-conda/) 
  
 ```bash
 cd /mnt/data
